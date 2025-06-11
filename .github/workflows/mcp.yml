@@ -7,8 +7,25 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
-    runs-on: macos-latest
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+          cache: 'maven'
+          
+      - name: Build and Test Backend
+        run: |
+          cd backend
+          mvn clean test
+
+  frontend-test:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
@@ -17,17 +34,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '11'
-          
-      - name: Build and Test Backend
-        run: |
-          cd backend
-          ./mvnw clean test
+          cache-dependency-path: 'frontend/TestClaudeCursorApp/package-lock.json'
           
       - name: Install Frontend Dependencies
         run: |
@@ -38,12 +45,75 @@ jobs:
         run: |
           cd frontend/TestClaudeCursorApp
           npm test
+
+  android-build:
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/TestClaudeCursorApp/package-lock.json'
+          
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+          
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend/TestClaudeCursorApp
+          npm ci
           
       - name: Build Android
         run: |
           cd frontend/TestClaudeCursorApp/android
           ./gradlew assembleDebug
+
+  ios-build:
+    needs: [backend-test, frontend-test]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/TestClaudeCursorApp/package-lock.json'
           
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend/TestClaudeCursorApp
+          npm ci
+          
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: frontend/TestClaudeCursorApp/ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+            
       - name: Install CocoaPods
         run: |
           sudo gem install cocoapods
@@ -55,7 +125,7 @@ jobs:
           xcodebuild -workspace TestClaudeCursorApp.xcworkspace -scheme TestClaudeCursorApp -configuration Debug -sdk iphonesimulator
 
   deploy:
-    needs: build-and-test
+    needs: [android-build, ios-build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
