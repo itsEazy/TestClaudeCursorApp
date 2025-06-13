@@ -12,8 +12,14 @@ env:
   SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
 jobs:
-  backend-test:
+  backend-unit-test:
     runs-on: ubuntu-latest
+    environment:
+      name: testing
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v3
       
@@ -21,16 +27,44 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
           cache: 'maven'
           
-      - name: Build and Test Backend
+      - name: Run Backend Unit Tests
         run: |
           cd backend
-          mvn clean test
+          mvn clean test -Dtest="**/AuthControllerUnitTest,**/HelloControllerTest"
+
+  backend-integration-test:
+    runs-on: ubuntu-latest
+    environment:
+      name: testing
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+          
+      - name: Run Backend Integration Tests
+        run: |
+          cd backend
+          mvn clean test -Dtest="**/integration/**"
 
   frontend-test:
     runs-on: ubuntu-latest
+    environment:
+      name: testing
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v3
       
@@ -46,13 +80,18 @@ jobs:
           cd frontend/TestClaudeCursorApp
           npm ci
           
+      - name: Run Frontend Linting
+        run: |
+          cd frontend/TestClaudeCursorApp
+          npm run lint
+          
       - name: Run Frontend Tests
         run: |
           cd frontend/TestClaudeCursorApp
-          npm test
+          npm test -- --watchAll=false --coverage=false
 
   android-build:
-    needs: [backend-test, frontend-test]
+    needs: [backend-unit-test, backend-integration-test, frontend-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -94,7 +133,7 @@ jobs:
           ./gradlew assembleDebug
 
   ios-build:
-    needs: [backend-test, frontend-test]
+    needs: [backend-unit-test, backend-integration-test, frontend-test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -133,6 +172,12 @@ jobs:
     needs: [android-build, ios-build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v3
       
@@ -146,7 +191,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
           
       - name: Deploy Backend to Staging
         run: |

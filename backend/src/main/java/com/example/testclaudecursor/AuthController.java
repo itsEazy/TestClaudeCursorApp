@@ -56,7 +56,7 @@ public class AuthController {
         }
     }
     
-    static class LoginRequest {
+    public static class LoginRequest {
         private String username;
         private String password;
         
@@ -77,7 +77,7 @@ public class AuthController {
         }
     }
     
-    static class LoginResponse {
+    public static class LoginResponse {
         private boolean success;
         private String message;
         private String username;
