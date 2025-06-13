@@ -127,11 +127,12 @@ jobs:
           cd frontend/TestClaudeCursorApp
           npm ci
           
-      - name: Build Android with Gradle
+      - name: Build Android
         uses: gradle/gradle-build-action@v2
         with:
           arguments: assembleDebug
           build-root-directory: frontend/TestClaudeCursorApp/android
+          gradle-version: 8.13
 
   ios-build:
     needs: [backend-unit-test, backend-integration-test, frontend-test]
