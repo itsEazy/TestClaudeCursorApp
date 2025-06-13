@@ -21,7 +21,7 @@ describe('Supabase Utils', () => {
   describe('getHelloMessage', () => {
     it('should return message from Supabase when data exists', async () => {
       const mockData = {
-        java_string: 'Hello from test!'
+        java_string: 'Hello from test!',
       };
 
       mockSupabase.from.mockReturnValue({
@@ -43,7 +43,7 @@ describe('Supabase Utils', () => {
 
     it('should return fallback message when data is null', async () => {
       const mockData = {
-        java_string: null
+        java_string: null,
       };
 
       mockSupabase.from.mockReturnValue({
@@ -81,7 +81,7 @@ describe('Supabase Utils', () => {
 
     it('should throw error when Supabase returns an error', async () => {
       const mockError = {
-        message: 'Database connection failed'
+        message: 'Database connection failed',
       };
 
       mockSupabase.from.mockReturnValue({
@@ -102,7 +102,7 @@ describe('Supabase Utils', () => {
 
     it('should query the correct record ID', async () => {
       const mockData = {
-        java_string: 'Test message'
+        java_string: 'Test message',
       };
 
       const mockEq = jest.fn().mockReturnValue({
@@ -141,7 +141,7 @@ describe('Supabase Utils', () => {
 
     it('should handle empty string response', async () => {
       const mockData = {
-        java_string: ''
+        java_string: '',
       };
 
       mockSupabase.from.mockReturnValue({
@@ -162,7 +162,7 @@ describe('Supabase Utils', () => {
 
     it('should handle whitespace-only string response', async () => {
       const mockData = {
-        java_string: '   '
+        java_string: '   ',
       };
 
       mockSupabase.from.mockReturnValue({

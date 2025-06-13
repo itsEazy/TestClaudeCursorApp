@@ -86,8 +86,8 @@ describe('LoginScreen Component', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
-        username: 'testuser'
-      })
+        username: 'testuser',
+      }),
     };
     mockFetch.mockResolvedValue(mockResponse as any);
 
@@ -124,8 +124,8 @@ describe('LoginScreen Component', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: false,
-        message: 'Invalid credentials'
-      })
+        message: 'Invalid credentials',
+      }),
     };
     mockFetch.mockResolvedValue(mockResponse as any);
 
@@ -181,12 +181,12 @@ describe('LoginScreen Component', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
-        username: 'testuser'
-      })
+        username: 'testuser',
+      }),
     };
-    
+
     // Create a promise that resolves after a delay
-    const delayedPromise = new Promise(resolve => 
+    const delayedPromise = new Promise(resolve =>
       setTimeout(() => resolve(mockResponse), 100)
     );
     mockFetch.mockReturnValue(delayedPromise as any);
@@ -219,8 +219,8 @@ describe('LoginScreen Component', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
-        username: 'testuser'
-      })
+        username: 'testuser',
+      }),
     };
     mockFetch.mockResolvedValue(mockResponse as any);
 
@@ -255,11 +255,11 @@ describe('LoginScreen Component', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
-        username: 'testuser'
-      })
+        username: 'testuser',
+      }),
     };
-    
-    const delayedPromise = new Promise(resolve => 
+
+    const delayedPromise = new Promise(resolve =>
       setTimeout(() => resolve(mockResponse), 100)
     );
     mockFetch.mockReturnValue(delayedPromise as any);
