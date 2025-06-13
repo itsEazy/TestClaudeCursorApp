@@ -2,47 +2,61 @@
  * @format
  */
 
-// Mock fetch globally
-global.fetch = jest.fn();
+import { getHelloMessage } from '../lib/supabase';
 
-describe('Hello World Button Tests', () => {
+// Mock Supabase client
+jest.mock('../lib/supabase', () => ({
+  getHelloMessage: jest.fn(),
+  supabase: {
+    from: jest.fn(),
+  },
+}));
+
+const mockGetHelloMessage = getHelloMessage as jest.MockedFunction<typeof getHelloMessage>;
+
+describe('Supabase Hello World Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('fetch function is mocked and can be called', async () => {
-    const mockResponse = { message: 'Hello World!' };
-    (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
+  test('getHelloMessage returns message from database', async () => {
+    const expectedMessage = 'Hello from Supabase!';
+    mockGetHelloMessage.mockResolvedValueOnce(expectedMessage);
 
-    const response = await fetch('http://localhost:8080/hello');
-    const data = await response.json();
+    const result = await getHelloMessage();
 
-    expect(fetch).toHaveBeenCalledWith('http://localhost:8080/hello');
-    expect(data.message).toBe('Hello World!');
+    expect(result).toBe(expectedMessage);
+    expect(mockGetHelloMessage).toHaveBeenCalledTimes(1);
   });
 
-  test('fetch handles error responses', async () => {
-    (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    } as Response);
+  test('getHelloMessage handles database errors', async () => {
+    const errorMessage = 'Database connection failed';
+    mockGetHelloMessage.mockRejectedValueOnce(new Error(errorMessage));
 
-    const response = await fetch('http://localhost:8080/hello');
-    
-    expect(fetch).toHaveBeenCalledWith('http://localhost:8080/hello');
-    expect(response.ok).toBe(false);
-    expect(response.status).toBe(500);
+    await expect(getHelloMessage()).rejects.toThrow(errorMessage);
+    expect(mockGetHelloMessage).toHaveBeenCalledTimes(1);
   });
 
-  test('fetch handles network errors', async () => {
-    (fetch as jest.MockedFunction<typeof fetch>).mockRejectedValueOnce(
-      new Error('Network error')
-    );
+  test('getHelloMessage returns fallback when no data', async () => {
+    mockGetHelloMessage.mockResolvedValueOnce('Hello World!');
 
-    await expect(fetch('http://localhost:8080/hello')).rejects.toThrow('Network error');
-    expect(fetch).toHaveBeenCalledWith('http://localhost:8080/hello');
+    const result = await getHelloMessage();
+
+    expect(result).toBe('Hello World!');
+    expect(mockGetHelloMessage).toHaveBeenCalledTimes(1);
+  });
+
+  test('multiple calls to getHelloMessage work correctly', async () => {
+    const messages = ['First message', 'Second message'];
+    mockGetHelloMessage
+      .mockResolvedValueOnce(messages[0])
+      .mockResolvedValueOnce(messages[1]);
+
+    const result1 = await getHelloMessage();
+    const result2 = await getHelloMessage();
+
+    expect(result1).toBe(messages[0]);
+    expect(result2).toBe(messages[1]);
+    expect(mockGetHelloMessage).toHaveBeenCalledTimes(2);
   });
 });

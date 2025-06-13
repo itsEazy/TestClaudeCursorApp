@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto';
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -6,30 +7,45 @@ import {
   TouchableOpacity,
   View,
   Alert,
-  Platform,
 } from 'react-native';
+import { supabase } from './lib/supabase';
+import LoginScreen from './src/LoginScreen';
 
 function App(): React.JSX.Element {
   const [message, setMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const API_BASE_URL = Platform.select({
-    android: 'http://10.0.2.2:8080',
-    ios: 'http://localhost:8080',
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<string>('');
 
   const fetchHelloMessage = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/hello`);
-      if (response.ok) {
-        const data = await response.json();
-        setMessage(data.message);
+      console.log('Fetching from Supabase using SDK...');
+
+      // First, let's see what records exist
+      const { data: allData, error: allError } = await supabase
+        .from('TestClaudeCursorTable')
+        .select('*');
+
+      console.log('All records:', allData);
+      console.log('All records error:', allError);
+
+      if (allData && allData.length > 0) {
+        // Use the first record that has a java_string
+        const record = allData.find(row => row.java_string) || allData[0];
+        const messageFromDB = record?.java_string || 'Hello World!';
+        console.log('Successfully fetched message:', messageFromDB);
+        setMessage(messageFromDB);
       } else {
-        Alert.alert('Error', 'Failed to fetch message from server');
+        console.log('No records found in table');
+        setMessage('No records found in table');
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not connect to server. Make sure the backend is running on port 8080.');
+      console.error('Error fetching message:', error);
+      Alert.alert(
+        'Error',
+        `Failed to fetch message: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -39,11 +55,31 @@ function App(): React.JSX.Element {
     setMessage('');
   };
 
+  const handleLoginSuccess = (username: string) => {
+    setCurrentUser(username);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser('');
+    setMessage('');
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>TestClaudeCursor</Text>
-        
+        <Text style={styles.welcomeText}>Welcome, {currentUser}!</Text>
+
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={fetchHelloMessage}
@@ -70,6 +106,15 @@ function App(): React.JSX.Element {
             <Text style={styles.messageText}>{message}</Text>
           </View>
         ) : null}
+
+        <TouchableOpacity
+          style={[styles.button, styles.logoutButton]}
+          onPress={handleLogout}
+        >
+          <Text style={styles.buttonText}>
+            Logout
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -113,6 +158,17 @@ const styles = StyleSheet.create({
   },
   eraseButton: {
     backgroundColor: '#e74c3c',
+  },
+  logoutButton: {
+    backgroundColor: '#95a5a6',
+    marginTop: 20,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#2c3e50',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   buttonText: {
     color: '#ffffff',
