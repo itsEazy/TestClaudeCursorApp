@@ -127,10 +127,16 @@ jobs:
           cd frontend/TestClaudeCursorApp
           npm ci
           
+      - name: Validate Gradle Wrapper
+        run: |
+          cd frontend/TestClaudeCursorApp/android
+          ls -la gradlew gradle/wrapper/
+          chmod +x gradlew
+          
       - name: Build Android
         run: |
           cd frontend/TestClaudeCursorApp/android
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace --info
 
   ios-build:
     needs: [backend-unit-test, backend-integration-test, frontend-test]
