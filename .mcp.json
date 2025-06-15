@@ -10,6 +10,12 @@
         "--project-ref",
         "xtoipvaihlellopwthyf"
       ]
+    },
+    "aws": {
+      "command": "uvx",
+      "args": [
+        "awslabs.core-mcp-server@latest"
+      ]
     }
   }
 }

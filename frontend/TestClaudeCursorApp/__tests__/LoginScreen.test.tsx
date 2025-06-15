@@ -6,6 +6,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import LoginScreen from '../src/LoginScreen';
+import { API_BASE_URL } from '../src/config/api';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -107,7 +108,7 @@ describe('LoginScreen Component', () => {
       expect(mockOnLoginSuccess).toHaveBeenCalledWith('testuser');
     });
 
-    expect(mockFetch).toHaveBeenCalledWith('http://localhost:8080/auth/login', {
+    expect(mockFetch).toHaveBeenCalledWith(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
