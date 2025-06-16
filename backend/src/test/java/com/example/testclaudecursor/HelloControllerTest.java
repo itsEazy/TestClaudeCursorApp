@@ -87,4 +87,14 @@ class HelloControllerTest {
             .body("message", instanceOf(String.class))
             .body("message", not(emptyString()));
     }
+
+    @Test
+    void testGetTestEndpointWithQueryParameters() {
+        given()
+        .when()
+            .get("/test?param=value&another=test")
+        .then()
+            .statusCode(200)
+            .body("message", equalTo("great job keep going"));
+    }
 }
