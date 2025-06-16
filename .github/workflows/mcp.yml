@@ -149,7 +149,7 @@ jobs:
       - name: Build Android (Fast)
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: assembleDebug --parallel --build-cache --configuration-cache
+          arguments: assembleDebug --parallel --build-cache
           build-root-directory: frontend/TestClaudeCursorApp/android
           gradle-version: 8.13
 
