@@ -13,6 +13,11 @@ public class HelloController {
         return new HelloResponse("Hello World");
     }
     
+    @GetMapping("/test")
+    public HelloResponse getTestMessage() {
+        return new HelloResponse("great job keep going");
+    }
+    
     public static class HelloResponse {
         private String message;
         

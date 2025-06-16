@@ -99,4 +99,59 @@ class HelloControllerRestAssuredTest {
             .statusCode(200)
             .time(lessThan(1000L));
     }
+
+    @Test
+    void testGetTestMessage() {
+        given()
+        .when()
+            .get("/test")
+        .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("message", equalTo("great job keep going"));
+    }
+
+    @Test
+    void testTestEndpointResponseStructure() {
+        given()
+        .when()
+            .get("/test")
+        .then()
+            .statusCode(200)
+            .body("message", instanceOf(String.class))
+            .body("message", not(emptyString()))
+            .body("$", hasKey("message"))
+            .body("size()", equalTo(1));
+    }
+
+    @Test
+    void testTestEndpointWithDifferentHttpMethods() {
+        given()
+        .when()
+            .post("/test")
+        .then()
+            .statusCode(405);
+
+        given()
+        .when()
+            .put("/test")
+        .then()
+            .statusCode(405);
+
+        given()
+        .when()
+            .delete("/test")
+        .then()
+            .statusCode(405);
+    }
+
+    @Test
+    void testTestEndpointResponseTime() {
+        given()
+        .when()
+            .get("/test")
+        .then()
+            .statusCode(200)
+            .time(lessThan(1000L));
+    }
 }

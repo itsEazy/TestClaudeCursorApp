@@ -56,4 +56,35 @@ class HelloControllerTest {
             .body("message", instanceOf(String.class))
             .body("message", not(emptyString()));
     }
+
+    @Test
+    void testGetTestMessage() {
+        given()
+        .when()
+            .get("/test")
+        .then()
+            .statusCode(200)
+            .body("message", equalTo("great job keep going"));
+    }
+
+    @Test
+    void testGetTestMessageReturnsCorrectContentType() {
+        given()
+        .when()
+            .get("/test")
+        .then()
+            .statusCode(200)
+            .contentType("application/json");
+    }
+
+    @Test
+    void testGetTestMessageStructure() {
+        given()
+        .when()
+            .get("/test")
+        .then()
+            .statusCode(200)
+            .body("message", instanceOf(String.class))
+            .body("message", not(emptyString()));
+    }
 }
