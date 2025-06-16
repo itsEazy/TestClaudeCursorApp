@@ -147,28 +147,63 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'frontend/TestClaudeCursorApp/package-lock.json'
           
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: frontend/TestClaudeCursorApp/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+          
       - name: Install Frontend Dependencies
         run: |
           cd frontend/TestClaudeCursorApp
-          npm ci
+          if [ ! -d "node_modules" ]; then npm ci; fi
           
       - name: Cache CocoaPods
         uses: actions/cache@v3
         with:
-          path: frontend/TestClaudeCursorApp/ios/Pods
+          path: |
+            frontend/TestClaudeCursorApp/ios/Pods
+            ~/.cocoapods
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
             
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v3
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-${{ hashFiles('**/*.xcworkspace') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-
+            
       - name: Install CocoaPods
         run: |
-          sudo gem install cocoapods
+          if ! command -v pod &> /dev/null; then
+            sudo gem install cocoapods
+          fi
           
-      - name: Build iOS
+      - name: Build iOS (Fast)
         run: |
           cd frontend/TestClaudeCursorApp/ios
-          pod install
-          xcodebuild -workspace TestClaudeCursorApp.xcworkspace -scheme TestClaudeCursorApp -configuration Debug -sdk iphonesimulator
+          
+          # Skip pod install if Pods directory exists and is up to date
+          if [ ! -d "Pods" ] || [ "Podfile.lock" -nt "Pods/Manifest.lock" ]; then
+            pod install --repo-update
+          else
+            echo "Pods are up to date, skipping pod install"
+          fi
+          
+          # Use faster build settings
+          xcodebuild -workspace TestClaudeCursorApp.xcworkspace \
+            -scheme TestClaudeCursorApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -arch x86_64 \
+            -parallelizeTargets \
+            -jobs $(sysctl -n hw.ncpu) \
+            build
 
   deploy:
     needs: [android-build, ios-build]
@@ -198,9 +233,16 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2-key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > ~/.ssh/ec2-key.pem
           chmod 600 ~/.ssh/ec2-key.pem
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          
+          # Verify key format
+          head -1 ~/.ssh/ec2-key.pem
+          tail -1 ~/.ssh/ec2-key.pem
+          
+          # Test SSH connection
+          ssh -i ~/.ssh/ec2-key.pem -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
           
       - name: Deploy to AWS EC2
         run: |
