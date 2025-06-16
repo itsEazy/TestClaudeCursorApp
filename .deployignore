@@ -1,0 +1,11 @@
+node_modules/
+.git/
+.DS_Store
+*.log
+frontend/TestClaudeCursorApp/node_modules/
+backend/target/
+.env
+.env.local
+*.tmp
+.idea/
+.vscode/

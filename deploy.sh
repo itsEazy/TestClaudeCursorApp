@@ -1,40 +1,40 @@
 #!/bin/bash
 
-# Set variables
-REGION="us-east-1"
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-ECR_BACKEND="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/testclaudecursor-backend"
-ECR_FRONTEND="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/testclaudecursor-frontend"
+# Deployment script for TestClaudeCursor app to EC2
+EC2_HOST="54.175.108.5"
+KEY_PATH="$HOME/.ssh/testclaudecursor-key.pem"
+APP_DIR="/home/ec2-user/app"
 
-echo "Building and deploying containers..."
+echo "🚀 Deploying TestClaudeCursor to EC2..."
 
-# Login to ECR
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+# Create app directory on server if it doesn't exist
+echo "📁 Creating app directory..."
+ssh -i $KEY_PATH ec2-user@$EC2_HOST "mkdir -p $APP_DIR"
 
-# Build and push backend
-echo "Building backend..."
-cd backend
-docker build -t $ECR_BACKEND:latest .
-docker push $ECR_BACKEND:latest
-cd ..
+# Copy source code to server (excluding node_modules and other large files)
+echo "📤 Uploading source code..."
+rsync -avz --progress -e "ssh -i $KEY_PATH" \
+  --exclude 'node_modules' \
+  --exclude '.git' \
+  --exclude 'target' \
+  --exclude '.DS_Store' \
+  --exclude '*.log' \
+  --exclude 'android/.gradle' \
+  --exclude 'android/app/.cxx' \
+  --exclude 'android/app/build' \
+  --exclude 'ios/build' \
+  --exclude '*.apk' \
+  ./backend ./frontend ./docker-compose.prod.yml \
+  ec2-user@$EC2_HOST:$APP_DIR/
 
-# Build and push frontend
-echo "Building frontend..."
-cd frontend/TestClaudeCursorApp
-docker build -t $ECR_FRONTEND:latest .
-docker push $ECR_FRONTEND:latest
-cd ../..
+# Build and deploy on server
+echo "🐳 Building and starting containers..."
+ssh -i $KEY_PATH ec2-user@$EC2_HOST "cd $APP_DIR && docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml build && docker-compose -f docker-compose.prod.yml up -d"
 
-# Update Kubernetes manifests with ECR URLs
-sed -i "s|your-ecr-repo/backend:latest|$ECR_BACKEND:latest|g" k8s/backend-deployment.yaml
-sed -i "s|your-ecr-repo/frontend:latest|$ECR_FRONTEND:latest|g" k8s/frontend-deployment.yaml
+# Check status
+echo "📊 Checking deployment status..."
+ssh -i $KEY_PATH ec2-user@$EC2_HOST "cd $APP_DIR && docker-compose -f docker-compose.prod.yml ps"
 
-# Deploy to Kubernetes
-echo "Deploying to Kubernetes..."
-kubectl apply -f k8s/secrets.yaml
-kubectl apply -f k8s/backend-deployment.yaml
-kubectl apply -f k8s/frontend-deployment.yaml
-
-echo "Deployment complete!"
-echo "Check status with: kubectl get pods"
-echo "Get frontend URL with: kubectl get service frontend"
+echo "✅ Deployment complete!"
+echo "🌐 Your app should be available at: http://testclaudecursor-alb-1183948507.us-east-1.elb.amazonaws.com"
+echo "🔧 Backend API: http://testclaudecursor-alb-1183948507.us-east-1.elb.amazonaws.com/auth/login"

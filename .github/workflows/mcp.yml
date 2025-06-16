@@ -180,39 +180,80 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+      EC2_HOST: ${{ secrets.EC2_HOST }}
     steps:
       - uses: actions/checkout@v3
       
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          node-version: '18'
-          cache: 'npm'
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
           
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          
-      - name: Deploy Backend to Staging
+      - name: Setup SSH key
         run: |
-          echo "Deploying backend to staging environment"
-          # Add your backend staging deployment commands here
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2-key.pem
+          chmod 600 ~/.ssh/ec2-key.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
           
-      - name: Deploy Frontend to Staging
+      - name: Deploy to AWS EC2
         run: |
-          echo "Deploying frontend to staging environment"
-          # Add your frontend staging deployment commands here
+          echo "🚀 Deploying to AWS EC2..."
           
-      - name: Deploy Backend to Production
+          # Create app directory on server
+          ssh -i ~/.ssh/ec2-key.pem ec2-user@${{ secrets.EC2_HOST }} "mkdir -p /home/ec2-user/app"
+          
+          # Copy source code (excluding build artifacts)
+          rsync -avz --progress -e "ssh -i ~/.ssh/ec2-key.pem" \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude 'target' \
+            --exclude '.DS_Store' \
+            --exclude '*.log' \
+            --exclude 'android/.gradle' \
+            --exclude 'android/app/.cxx' \
+            --exclude 'android/app/build' \
+            --exclude 'ios/build' \
+            --exclude '*.apk' \
+            ./backend ./frontend ./docker-compose.prod.yml \
+            ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/app/
+          
+          # Build and deploy containers
+          ssh -i ~/.ssh/ec2-key.pem ec2-user@${{ secrets.EC2_HOST }} \
+            "cd /home/ec2-user/app && \
+             docker-compose -f docker-compose.prod.yml down && \
+             docker-compose -f docker-compose.prod.yml build backend && \
+             docker-compose -f docker-compose.prod.yml up -d backend"
+          
+          # Verify deployment
+          echo "✅ Checking deployment status..."
+          ssh -i ~/.ssh/ec2-key.pem ec2-user@${{ secrets.EC2_HOST }} \
+            "cd /home/ec2-user/app && docker-compose -f docker-compose.prod.yml ps"
+          
+      - name: Health Check
+        run: |
+          echo "🏥 Performing health check..."
+          sleep 30
+          
+          # Check if backend is healthy via load balancer
+          if curl -f http://testclaudecursor-alb-1183948507.us-east-1.elb.amazonaws.com/hello; then
+            echo "✅ Health check passed!"
+          else
+            echo "❌ Health check failed!"
+            exit 1
+          fi
+          
+      - name: Deployment Summary
         if: success()
         run: |
-          echo "Deploying backend to production environment"
-          # Add your backend production deployment commands here
-          
-      - name: Deploy Frontend to Production
-        if: success()
-        run: |
-          echo "Deploying frontend to production environment"
-          # Add your frontend production deployment commands here 
+          echo "🎉 Deployment successful!"
+          echo "🌐 Backend API: http://testclaudecursor-alb-1183948507.us-east-1.elb.amazonaws.com"
+          echo "📱 Endpoints available:"
+          echo "  - GET /hello"
+          echo "  - POST /auth/login" 
