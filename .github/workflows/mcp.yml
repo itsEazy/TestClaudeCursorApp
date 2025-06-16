@@ -111,6 +111,14 @@ jobs:
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: frontend/TestClaudeCursorApp/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
           
       - name: Cache Gradle packages
         uses: actions/cache@v3
@@ -118,19 +126,30 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            frontend/TestClaudeCursorApp/android/.gradle
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
             
+      - name: Cache Android build outputs
+        uses: actions/cache@v3
+        with:
+          path: |
+            frontend/TestClaudeCursorApp/android/app/build/intermediates
+            frontend/TestClaudeCursorApp/android/app/build/tmp
+          key: ${{ runner.os }}-android-build-${{ hashFiles('frontend/TestClaudeCursorApp/android/app/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-android-build-
+            
       - name: Install Frontend Dependencies
         run: |
           cd frontend/TestClaudeCursorApp
-          npm ci
+          if [ ! -d "node_modules" ]; then npm ci; fi
           
-      - name: Build Android
+      - name: Build Android (Fast)
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: assembleDebug
+          arguments: assembleDebug --parallel --build-cache --configuration-cache
           build-root-directory: frontend/TestClaudeCursorApp/android
           gradle-version: 8.13
 
